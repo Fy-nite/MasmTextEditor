@@ -1,1 +1,5 @@
-/media/cat/Apps/texteditor/src/main/java/org/finite/App.java
+/media/cat/MicrOS/apps/TextEditor.app/Contents/src/org/finite/texteditor/ui/SyntaxHighlighter.java
+/media/cat/MicrOS/apps/TextEditor.app/Contents/src/org/finite/texteditor/TextEditorApp.java
+/media/cat/MicrOS/apps/TextEditor.app/Contents/src/org/finite/texteditor/ui/LineNumberComponent.java
+/media/cat/MicrOS/apps/TextEditor.app/Contents/src/org/finite/texteditor/syntax/SyntaxHighlighter.java
+/media/cat/MicrOS/apps/TextEditor.app/Contents/src/org/finite/texteditor/ui/TextEditorPanel.java
