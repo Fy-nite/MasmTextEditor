@@ -7,7 +7,7 @@ import org.finite.texteditor.ui.TextEditorPanel;
 
 public class TextEditorApp extends MicrOSApp {
     private TextEditorPanel editorPanel;
-
+    
     @Override
     public JComponent createUI() {
         editorPanel = new TextEditorPanel(vfs);

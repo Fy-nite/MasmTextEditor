@@ -5,8 +5,14 @@ import javax.swing.*;
 import javax.swing.event.*;
 import javax.swing.text.*;
 
+import org.Finite.MicrOS.apps.MicrOSApp;
 import org.Finite.MicrOS.core.VirtualFileSystem;
+import org.Finite.MicrOS.core.WindowManager;
+import org.Finite.MicrOS.ui.MicrOSPanel;
+import org.Finite.MicrOS.Desktop.*;
+
 import org.finite.texteditor.syntax.SyntaxHighlighter;
+
 
 import java.awt.*;
 import java.awt.event.*;
@@ -24,7 +30,7 @@ public class TextEditorPanel extends JPanel {
     private final SyntaxHighlighter syntaxHighlighter;
     private String currentFilePath = null;
     private boolean hasUnsavedChanges = false;
-    
+    private WindowManager windowManager;
     private static final Color DARK_BG = new Color(30, 30, 30);
     private static final Color DARK_FG = new Color(220, 220, 220);
     private static final Color LIGHT_BG = new Color(250, 250, 250);
@@ -303,46 +309,73 @@ public class TextEditorPanel extends JPanel {
         JFileChooser fileChooser = new JFileChooser(vfs.getRootPath().toFile());
         if (fileChooser.showOpenDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
-            try {
-                String virtualPath = vfs.getVirtualPath(file.toPath());
-                byte[] content = vfs.readFile(virtualPath);
-                setText(new String(content));
-                currentFilePath = virtualPath;
-                hasUnsavedChanges = false;
-            } catch (IOException ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Error opening file: " + ex.getMessage(), 
-                    "Error", 
-                    JOptionPane.ERROR_MESSAGE);
-            }
+            runAsync(() -> {
+                try {
+                    String virtualPath = vfs.getVirtualPath(file.toPath());
+                    byte[] content = vfs.readFile(virtualPath);
+                    SwingUtilities.invokeLater(() -> {
+                        setText(new String(content));
+                        currentFilePath = virtualPath;
+                        hasUnsavedChanges = false;
+                    });
+                } catch (IOException ex) {
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, 
+                        "Error opening file: " + ex.getMessage(), 
+                        "Error", 
+                        JOptionPane.ERROR_MESSAGE));
+                }
+            });
         }
     }
-
     public void openFile(String virtualPath) {
-        try {
-            String content = new String(vfs.readFile(virtualPath));
-            setText(content);
-            syntaxHighlighter.setFileType(virtualPath);
-            currentFilePath = virtualPath;
-            hasUnsavedChanges = false;
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        runAsync(() -> {
+            try {
+                byte[] content = vfs.readFile(virtualPath);
+                SwingUtilities.invokeLater(() -> {
+                    setText(new String(content));
+                    currentFilePath = virtualPath;
+                    hasUnsavedChanges = false;
+                });
+            } catch (IOException ex) {
+                SwingUtilities.invokeLater(() -> {
+                    JDesktopPane desktopPane = windowManager.getDesktop();
+                    if (desktopPane != null) {
+                        MicrOSPanel.showInternalDialog(desktopPane, 
+                            "Error opening file: " + ex.getMessage(), 
+                            "Error", 
+                            JOptionPane.ERROR_MESSAGE);
+                    } else {
+                        JOptionPane.showMessageDialog(this, 
+                            "Error opening file: " + ex.getMessage(), 
+                            "Error", 
+                            JOptionPane.ERROR_MESSAGE);
+                    }
+                });
+            }
+        });
+    }
+    public void setCurrentFilePath(String path) {
+        this.currentFilePath = path;
+    }
+    public String getCurrentFilePath() {
+        return currentFilePath;
     }
 
     private void saveFile() {
         if (currentFilePath == null) {
             saveFileAs();
         } else {
-            try {
-                vfs.createFile(currentFilePath, getText().getBytes());
-                hasUnsavedChanges = false;
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Error saving file: " + ex.getMessage(), 
-                    "Error", 
-                    JOptionPane.ERROR_MESSAGE);
-            }
+            runAsync(() -> {
+                try {
+                    vfs.createFile(currentFilePath, getText().getBytes());
+                    SwingUtilities.invokeLater(() -> hasUnsavedChanges = false);
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, 
+                        "Error saving file: " + ex.getMessage(), 
+                        "Error", 
+                        JOptionPane.ERROR_MESSAGE));
+                }
+            });
         }
     }
 
@@ -350,17 +383,21 @@ public class TextEditorPanel extends JPanel {
         JFileChooser fileChooser = new JFileChooser(vfs.getRootPath().toFile());
         if (fileChooser.showSaveDialog(this) == JFileChooser.APPROVE_OPTION) {
             File file = fileChooser.getSelectedFile();
-            try {
-                String virtualPath = vfs.getVirtualPath(file.toPath());
-                vfs.createFile(virtualPath, getText().getBytes());
-                currentFilePath = virtualPath;
-                hasUnsavedChanges = false;
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, 
-                    "Error saving file: " + ex.getMessage(), 
-                    "Error", 
-                    JOptionPane.ERROR_MESSAGE);
-            }
+            runAsync(() -> {
+                try {
+                    String virtualPath = vfs.getVirtualPath(file.toPath());
+                    vfs.createFile(virtualPath, getText().getBytes());
+                    SwingUtilities.invokeLater(() -> {
+                        currentFilePath = virtualPath;
+                        hasUnsavedChanges = false;
+                    });
+                } catch (Exception ex) {
+                    SwingUtilities.invokeLater(() -> JOptionPane.showMessageDialog(this, 
+                        "Error saving file: " + ex.getMessage(), 
+                        "Error", 
+                        JOptionPane.ERROR_MESSAGE));
+                }
+            });
         }
     }
 
@@ -370,16 +407,26 @@ public class TextEditorPanel extends JPanel {
                 "Do you want to save changes?",
                 "Unsaved Changes",
                 JOptionPane.YES_NO_CANCEL_OPTION);
-            
+
             if (response == JOptionPane.YES_OPTION) {
                 saveFile();
             } else if (response == JOptionPane.CANCEL_OPTION) {
                 return;
             }
         }
-        setText("");
-        currentFilePath = null;
-        hasUnsavedChanges = false;
+        runAsync(() -> SwingUtilities.invokeLater(() -> {
+            setText("");
+            currentFilePath = null;
+            hasUnsavedChanges = false;
+        }));
+    }
+
+    private void runAsync(Runnable task) {
+        try {
+            Thread.startVirtualThread(task); // Use virtual threads if available
+        } catch (UnsupportedOperationException e) {
+            new Thread(task).start(); // Fallback to regular threads
+        }
     }
 
     private void documentChanged() {

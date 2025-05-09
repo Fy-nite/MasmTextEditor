@@ -1,4 +1,4 @@
-package org.Finite.MicrOS.ui;
+package org.finite.texteditor.ui;
 
 import javax.swing.*;
 import javax.swing.text.*;
